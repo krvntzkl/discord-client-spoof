@@ -1,0 +1,46 @@
+{
+  "$schema": "https://moonlight-mod.github.io/manifest.schema.json",
+  "id": "clientSpoof",
+  "version": "1.2.0",
+  "apiLevel": 2,
+  "meta": {
+    "name": "Client Spoof",
+    "tagline": "Masque le type de client visible (propriétés / présence)",
+    "description": "Modifie les **client properties** ([super properties](https://docs.discord.food/reference#client-properties)) pour chaque **Browser Type** documenté, ce qui correspond aux **Client Status Type** ([desktop / mobile / embedded / vr / web](https://docs.discord.food/resources/presence#client-status-object)). Les `client_build_number` réels sont conservés.\n\n**Limite :** mises à jour Discord, rechargement conseillé après changement de profil.",
+    "authors": ["krvntzkl"],
+    "tags": ["privacy", "qol"],
+    "source": "https://github.com/krvntzkl"
+  },
+  "settings": {
+    "profile": {
+      "type": "select",
+      "displayName": "Profil (Browser → statut client)",
+      "description": "Chaque option reprend un nom `browser` officiel ; le statut affiché côté présence est indiqué (desktop, mobile, embedded, vr, web). Les anciennes valeurs `android` / `ios` restent acceptées.",
+      "default": "native",
+      "advice": "reload",
+      "options": [
+        { "value": "native", "label": "Réel — aucune modification" },
+        { "value": "desktop", "label": "Discord Client → desktop" },
+        { "value": "discord_android", "label": "Discord Android → mobile" },
+        { "value": "discord_ios", "label": "Discord iOS → mobile" },
+        { "value": "embedded", "label": "Discord Embedded → embedded" },
+        { "value": "vr", "label": "Discord VR → vr" },
+        { "value": "android_chrome", "label": "Android Chrome → web" },
+        { "value": "android_mobile", "label": "Android Mobile → web" },
+        { "value": "blackberry", "label": "BlackBerry → web" },
+        { "value": "chrome", "label": "Chrome (bureau) → web" },
+        { "value": "chrome_ios", "label": "Chrome iOS → web" },
+        { "value": "edge", "label": "Edge (legacy) → web" },
+        { "value": "facebook_mobile", "label": "Facebook Mobile → web" },
+        { "value": "firefox", "label": "Firefox → web" },
+        { "value": "internet_explorer", "label": "Internet Explorer → web" },
+        { "value": "konqueror", "label": "Konqueror → web" },
+        { "value": "mobile_safari", "label": "Mobile Safari → web" },
+        { "value": "mozilla", "label": "Mozilla (générique) → web" },
+        { "value": "opera", "label": "Opera → web" },
+        { "value": "opera_mini", "label": "Opera Mini → web" },
+        { "value": "safari", "label": "Safari (bureau) → web" }
+      ]
+    }
+  }
+}

@@ -1,0 +1,5 @@
+﻿ArchivÃ© le 2026-04-14 depuis:
+C:\Users\vlad2\Documents\Projets\moonlight
+
+Exclusions (non copiÃ©s): deps Node/Python, bin/obj/packages .NET, caches, cibles Rust/Unity/Android courantes.
+Pour retravailler: copier le dossier vers le disque de travail, puis npm install / nuget restore / dotnet restore / pip install -r requirements.txt selon le projet.
