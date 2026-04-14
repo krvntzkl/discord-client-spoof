@@ -1,5 +1,5 @@
-# À chaque tag du type v1.2.0 : build + archive dist/ jointe à la release GitHub.
-name: Release (archive dist)
+# On tag v*: build, pack asar, attach dist zip + clientSpoof.asar to the GitHub Release.
+name: Release
 
 on:
   push:
@@ -15,21 +15,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
+          cache: pnpm
 
-      - run: npm ci
-      - run: npm run build
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - run: pnpm run repo
 
-      - name: Créer une zip du contenu de dist/ (équivalent du dossier dist en local)
+      - name: Zip dist/ (same layout as local Moonbase "dist" search path)
         run: |
           cd dist
           zip -r "../moonlight-dist-${{ github.ref_name }}.zip" .
 
-      - name: Publier la release avec la pièce jointe
+      - name: Publish release assets
         uses: softprops/action-gh-release@v2
         with:
-          files: moonlight-dist-${{ github.ref_name }}.zip
+          files: |
+            moonlight-dist-${{ github.ref_name }}.zip
+            repo/clientSpoof.asar
           generate_release_notes: true

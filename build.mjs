@@ -9,6 +9,7 @@ const clean = process.argv.includes("--clean");
 
 if (clean) {
   fs.rmSync("./dist", { recursive: true, force: true });
+  fs.rmSync("./repo", { recursive: true, force: true });
 } else {
   const exts = fs.readdirSync("./plugins");
 

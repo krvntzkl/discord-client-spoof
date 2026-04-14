@@ -1,24 +1,30 @@
 import type { ExtensionWebExports } from "@moonlight-mod/types";
 
 /**
- * Patch du résultat de `handleIdentify()` — même idée que la PR Vencord « DeviceSpoof » :
- * le client envoie l’IDENTIFY (y compris fast connect) sans forcément passer par
- * `WebSocket.send` en JSON brut interceptable.
+ * Patch the return value of `handleIdentify()` (same idea as Vencord’s DeviceSpoof PR):
+ * IDENTIFY (including fast connect) may not go through raw `WebSocket.send` JSON.
  */
 export const patches: ExtensionWebExports["patches"] = [
   {
     find: "this.handleIdentify()",
     replace: {
+      // No /g flag: multiple replacements in the same module can break handleIdentify /
+      // fast connect and cause the “connection issues” screen.
       match:
-        /(?:let|const|var)\s+(\i)\s*=\s*(?:await\s+)?this\.handleIdentify\(\)/g,
+        /(?:let|const|var)\s+(\i)\s*=\s*(?:await\s+)?this\.handleIdentify\(\)/,
       replacement: (full: string, varName: string) =>
-        `${full};require("clientSpoof_spoof").afterIdentify(${varName});`,
+        `${full};try{require("clientSpoof_spoof").afterIdentify(${varName});}catch(_){}`,
     },
   },
 ];
 
-export const webpackModules: ExtensionWebExports["webpackModules"] = {
+/**
+ * Omit `run`: Moonlight’s loader (`core/extension/loader.ts`) then injects the compiled
+ * `webpackModules/spoof.js` as the webpack factory. With `run: () => {}`, that empty stub
+ * replaces the whole module — no hooks, no `[clientSpoof]` logs.
+ */
+export const webpackModules = {
   spoof: {
     entrypoint: true,
   },
-};
+} as unknown as ExtensionWebExports["webpackModules"];

@@ -2,8 +2,8 @@ const EXT_ID = "clientSpoof";
 const HEADER = "x-super-properties";
 
 /**
- * Profils alignés sur la table « Browser Type » → Client Status Type
- * (desktop / mobile / embedded / vr / web) — doc Userdoccers.
+ * Profiles aligned with the Browser Type → Client Status Type table
+ * (desktop / mobile / embedded / vr / web); see Discord client-properties docs.
  */
 const PROFILE_IDS = [
   "native",
@@ -32,6 +32,12 @@ const PROFILE_IDS = [
 type Profile = (typeof PROFILE_IDS)[number];
 
 const logger = moonlight.getLogger("clientSpoof");
+
+/** Always visible in DevTools (Ctrl+Shift+I); moonlight’s logger may use a different prefix. */
+function dbg(...args: unknown[]): void {
+  // eslint-disable-next-line no-console -- intentional DevTools output
+  console.info("[clientSpoof]", ...args);
+}
 
 function isProfile(v: string): v is Profile {
   return (PROFILE_IDS as readonly string[]).includes(v);
@@ -83,7 +89,7 @@ function syncLegacyDollarKeys(props: Record<string, unknown>): void {
   }
 }
 
-/** Navigateur « web » sur Windows (ex. doc exemple Web Chrome). */
+/** Web browser on Windows (e.g. Chrome-style UA in docs). */
 function applyWebWindows(
   props: Record<string, unknown>,
   browser: string,
@@ -100,9 +106,9 @@ function applyWebWindows(
 }
 
 /**
- * Aligne les champs visibles sur la doc
+ * Align visible fields with
  * [Client Properties](https://docs.discord.food/reference#client-properties).
- * On conserve `client_build_number` / `native_build_number` d’origine.
+ * Keeps original `client_build_number` / `native_build_number`.
  */
 function applyProfile(props: Record<string, unknown>, profile: Profile): void {
   if (profile === "native") return;
@@ -165,7 +171,7 @@ function applyProfile(props: Record<string, unknown>, profile: Profile): void {
       break;
     }
 
-    /* ——— web (navigateurs) ——— */
+    /* ——— web (browsers) ——— */
     case "android_chrome": {
       props.os = "Android";
       props.os_version = "14";
@@ -343,24 +349,73 @@ function patchPropertiesObject(
   applyProfile(props, profile);
 }
 
+function isThenable(v: unknown): v is PromiseLike<unknown> {
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    "then" in v &&
+    typeof (v as { then?: unknown }).then === "function"
+  );
+}
+
+function applyIdentifyPropertiesMutate(identifyReturn: unknown): void {
+  if (identifyReturn === null || identifyReturn === undefined) {
+    logger.warn(
+      "[clientSpoof] IDENTIFY: null/undefined result — nothing to patch",
+    );
+    return;
+  }
+  if (typeof identifyReturn !== "object") {
+    logger.warn(
+      "[clientSpoof] IDENTIFY: unexpected type",
+      typeof identifyReturn,
+    );
+    return;
+  }
+  const payload = identifyReturn as { properties?: Record<string, unknown> };
+  if (!payload.properties) {
+    logger.warn(
+      "[clientSpoof] IDENTIFY: no `properties` on object — keys:",
+      Object.keys(payload).slice(0, 25),
+    );
+    return;
+  }
+  const profile = getProfile();
+  if (profile === "native") return;
+  applyProfile(payload.properties, profile);
+  dbg("Gateway IDENTIFY OK — profile:", profile);
+  logger.info(
+    "Gateway IDENTIFY: client properties patched (profile",
+    profile,
+    ")",
+  );
+}
+
 /**
- * Appelé depuis le patch webpack sur `handleIdentify()` (fast connect + connexion
- * normale). C’est le chemin qui compte pour la session vue par Discord — les hooks
- * fetch/WebSocket seuls ne suffisent souvent pas.
+ * Called from the webpack patch on `handleIdentify()` (fast connect + normal login).
+ * Handles both a resolved value and a Promise; otherwise `.properties` is read from the
+ * Promise and spoof never applies (e.g. status stays Desktop).
  */
 export function afterIdentify(identifyReturn: unknown): void {
   try {
-    if (!identifyReturn || typeof identifyReturn !== "object") return;
-    const payload = identifyReturn as { properties?: Record<string, unknown> };
-    if (!payload.properties) return;
-    const profile = getProfile();
-    if (profile === "native") return;
-    applyProfile(payload.properties, profile);
-    logger.info(
-      "Gateway IDENTIFY : propriétés client modifiées (profil",
-      profile,
-      ")",
+    dbg(
+      "afterIdentify called —",
+      identifyReturn === null || identifyReturn === undefined
+        ? "nullish"
+        : typeof identifyReturn,
+      isThenable(identifyReturn) ? "(thenable)" : "(sync)",
     );
+    if (isThenable(identifyReturn)) {
+      void Promise.resolve(identifyReturn).then((resolved) => {
+        try {
+          applyIdentifyPropertiesMutate(resolved);
+        } catch (e) {
+          logger.error("afterIdentify (async)", e);
+        }
+      });
+      return;
+    }
+    applyIdentifyPropertiesMutate(identifyReturn);
   } catch (e) {
     logger.error("afterIdentify", e);
   }
@@ -472,7 +527,9 @@ try {
   patchFetch();
   patchXHR();
   patchWebSocket();
-  logger.info("Client spoof actif — profil:", getProfile());
+  dbg("hooks installed — profile:", getProfile());
+  logger.info("Client spoof active — profile:", getProfile());
 } catch (e) {
-  logger.error("Échec installation des hooks", e);
+  dbg("hook setup failed", e);
+  logger.error("Failed to install hooks", e);
 }
